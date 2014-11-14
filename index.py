@@ -1,19 +1,15 @@
 # -*- coding: utf-8 -*-
 __author__ = 'qtheya'
+from tray import *
 
-from os import system
-from PyQt5 import QtGui, QtCore, QtWidgets
-import sys
-#from tray import *
+settings = QtCore.QSettings()
+settings.setValue('servers', {})
+settings.setValue('cardentials', {})
 
-
-
-#del settings
-#settings = QtCore.QSettings('qrdp', 'qrdp')
-servers = settings.value('servers', type = int)
-cardentials = settings.value('cardentials', type = int)
-servers = repr(servers)
-cardentials =repr(cardentials)
+del settings
+settings = QtCore.QSettings()
+servers = settings.value('servers', type = QtCore.QVariant)
+cardentials = settings.value('cardentials', type = QtCore.QVariant)
 
 def main():
     app = QtWidgets.QApplication(sys.argv)
@@ -26,9 +22,6 @@ def main():
     sys.exit(app.exec_())
 
 
-
-isadm = ''
-
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self, parent = None):
         super(MainWindow, self).__init__(parent)
@@ -37,6 +30,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.addButton = QtWidgets.QPushButton('New connection')
         self.addButton.clicked.connect(self.addWidget)
         self.cb = QtWidgets.QCheckBox('Remove host', self)
+        self.resolution = QtWidgets.QLineEdit(self)
+        self.resolution.setObjectName("resolution")
+        self.resolution.setText("1366x695")
         self.scrollLayout = QtWidgets.QFormLayout()
         self.scrollWidget = QtWidgets.QWidget()
         self.scrollWidget.setLayout(self.scrollLayout)
@@ -45,10 +41,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.scrollArea.setWidget(self.scrollWidget)
         self.mainLayout = QtWidgets.QVBoxLayout()
         self.mainLayout.addWidget(self.addButton)
+        self.mainLayout.addWidget(self.resolution)
         self.mainLayout.addWidget(self.cb)
         self.check = False
-
-
 
         for item in servers:
             srv = servers.get(item)
@@ -69,7 +64,6 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def cb_changed(self, state):
         self.check = (state == QtCore.Qt.Checked)
-        print self.check
 
     def closeEvent(self, event):
        event.ignore()
@@ -78,20 +72,20 @@ class MainWindow(QtWidgets.QMainWindow):
     def buttonClicked(self):
         sender = self.sender()
         host = sender.text()
+        print host
         if self.check is True:
-            print 1
             sender.deleteLater()
             for k,v in servers.items():
                 if v == host:
-                    del servers[v]
+                    del servers[k]
         else:
-            print 0
             authSettings = cardentials.get(host)
             user = authSettings[0]
+            user = str(user)
             password =  authSettings[1]
+            password = str(password)
             isadm = authSettings[2]
-            system("rdesktop -5 -K -r clipboard:CLIPBOARD -z -a 16 " + host + isadm + " -g 1366x695 -u" + user + " -p " +password)
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             
+            system("rdesktop -5 -K -r clipboard:CLIPBOARD -z -a 16 " + host +'' + isadm + " -g " + self.resolution.text() + " -u " + user + " -p " +password)
 
 
 class dialogWindow(QtWidgets.QDialog):
@@ -111,9 +105,8 @@ class dialogWindow(QtWidgets.QDialog):
         self.textPass.setEchoMode(QtWidgets.QLineEdit.Password)
         self.cb = QtWidgets.QCheckBox('Is Admin', self)
         self.cb.move(120, 120)
-        self.cb.toggle()
         self.cb.stateChanged.connect(self.adminSession)
-
+        self.isadm = ''
         layout = QtWidgets.QVBoxLayout(self)
         layout.addWidget(self.textHost)
         layout.addWidget(self.textName)
@@ -134,15 +127,16 @@ class dialogWindow(QtWidgets.QDialog):
     def adminSession(self, state):
         if state == QtCore.Qt.Checked:
             isadm = ' -0'
-        self.isadm = isadm
+            self.isadm = isadm
 
-    def addHost(self):
+    def addHost(self,):
         host = self.textHost.text()
         name = self.textName.text()
         password = self.textPass.text()
-        addLen = len(servers)
-        servers.update({addLen : host})
-        newHost = servers.get(addLen)
+        servlen = range(1, 1000)
+        newItem = [x for x in servlen if x not in servers.keys()]
+        servers.update({newItem[0] : host})
+        newHost = servers.get(newItem[0])
         cardentials.update({newHost : [name, password, self.isadm]})
         self.accept()
 
@@ -153,8 +147,8 @@ class dialogWindow(QtWidgets.QDialog):
 class newHostButton(QtWidgets.QPushButton):
     def __init__(self, parent=None):
         super(newHostButton, self).__init__(parent)
-        dialogWindow()
-        self.setText(servers.get(len(servers)-1))
+        a = dialogWindow()
+        self.setText(a.textHost.text())
         self.clicked.connect(mw.buttonClicked)
 
 class delWindow(QtWidgets.QDialog):
@@ -174,8 +168,6 @@ class delWindow(QtWidgets.QDialog):
 
         self.setGeometry(300, 300, 225, 350)
         self.exec_()
-
-
 
 
 if __name__ == '__main__':

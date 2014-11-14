@@ -1,5 +1,6 @@
 __author__ = 'qtheya'
 # -*- coding: utf-8 -*-
+from os import system
 from PyQt5 import QtGui, QtCore, QtWidgets
 import sys
 from index import *
