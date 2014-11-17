@@ -1,15 +1,19 @@
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
-__author__ = 'qtheya'
-from tray import *
+from os import system
+import sys
+from PyQt5 import QtGui, QtCore, QtWidgets
 
 settings = QtCore.QSettings()
 settings.setValue('servers', {})
-settings.setValue('cardentials', {})
+settings.setValue('credentials', {})
 
 del settings
 settings = QtCore.QSettings()
 servers = settings.value('servers', type = QtCore.QVariant)
-cardentials = settings.value('cardentials', type = QtCore.QVariant)
+credentials = settings.value('credentials', type = QtCore.QVariant)
+
+
 
 def main():
     app = QtWidgets.QApplication(sys.argv)
@@ -60,6 +64,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.cb.stateChanged.connect(self.cb_changed)
 
     def addWidget(self):
+        if mw.isHidden() == True:
+            mw.show()
         self.scrollLayout.addRow(newHostButton())
 
     def cb_changed(self, state):
@@ -79,7 +85,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 if v == host:
                     del servers[k]
         else:
-            authSettings = cardentials.get(host)
+            authSettings = credentials.get(host)
             user = authSettings[0]
             user = str(user)
             password =  authSettings[1]
@@ -91,7 +97,7 @@ class MainWindow(QtWidgets.QMainWindow):
 class dialogWindow(QtWidgets.QDialog):
     def __init__(self):
         super(dialogWindow, self).__init__()
-
+        self.setFixedSize(220,330)
         self.buttonBox = QtWidgets.QDialogButtonBox(self)
         self.textName = QtWidgets.QLineEdit(self)
         self.textPass = QtWidgets.QLineEdit(self)
@@ -103,9 +109,14 @@ class dialogWindow(QtWidgets.QDialog):
         self.textHost.setObjectName("Hostname")
         self.textHost.setText("Hostname")
         self.textPass.setEchoMode(QtWidgets.QLineEdit.Password)
-        self.cb = QtWidgets.QCheckBox('Is Admin', self)
-        self.cb.move(120, 120)
+        self.cb = QtWidgets.QCheckBox('/admin', self)
+        self.cb.move(140, 120)
         self.cb.stateChanged.connect(self.adminSession)
+        self.cb.resize(self.cb.sizeHint())
+        self.cb1 = QtWidgets.QCheckBox("Administrator", self)
+        self.cb1.move(10, 120)
+        self.cb1.resize(self.cb1.sizeHint())
+        self.cb1.stateChanged.connect(self.admin)
         self.isadm = ''
         layout = QtWidgets.QVBoxLayout(self)
         layout.addWidget(self.textHost)
@@ -117,10 +128,9 @@ class dialogWindow(QtWidgets.QDialog):
         self.addButton.move(10, 10)
         self.addButton.clicked.connect(self.addHost)
         self.closeButton = QtWidgets.QPushButton('Cancel', self)
-        self.closeButton.clicked.connect(self.cancel)
-        self.closeButton.resize(self.addButton.sizeHint())
+        self.closeButton.clicked.connect(self.deleteLater)
+        self.closeButton.resize(self.closeButton.sizeHint())
         self.closeButton.move(120, 10)
-
         self.setGeometry(300, 300, 225, 350)
         self.exec_()
 
@@ -129,7 +139,13 @@ class dialogWindow(QtWidgets.QDialog):
             isadm = ' -0'
             self.isadm = isadm
 
-    def addHost(self,):
+    def admin(self, st):
+        if st == QtCore.Qt.Checked:
+            self.textName.setText("Administrator")
+            self.cb.toggle()
+
+
+    def addHost(self):
         host = self.textHost.text()
         name = self.textName.text()
         password = self.textPass.text()
@@ -137,11 +153,8 @@ class dialogWindow(QtWidgets.QDialog):
         newItem = [x for x in servlen if x not in servers.keys()]
         servers.update({newItem[0] : host})
         newHost = servers.get(newItem[0])
-        cardentials.update({newHost : [name, password, self.isadm]})
+        credentials.update({newHost : [name, password, self.isadm]})
         self.accept()
-
-    def cancel(self):
-        self.reject()
 
 
 class newHostButton(QtWidgets.QPushButton):
@@ -151,10 +164,10 @@ class newHostButton(QtWidgets.QPushButton):
         self.setText(a.textHost.text())
         self.clicked.connect(mw.buttonClicked)
 
+
 class delWindow(QtWidgets.QDialog):
     def __init__(self):
         super(delWindow, self).__init__()
-
         x = 10
         y = 50
         for item in servers:
@@ -165,9 +178,34 @@ class delWindow(QtWidgets.QDialog):
             btn.move(x, y)
             self.setToolTip(srv)
             y += 40
-
         self.setGeometry(300, 300, 225, 350)
         self.exec_()
+
+
+class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
+    def __init__(self, parent=None):
+        QtWidgets.QSystemTrayIcon.__init__(self, parent)
+        self.setIcon(QtGui.QIcon.fromTheme("applications-system"))
+
+        self.activated.connect(self.LeftClick)
+        self.right_menu = RightClickMenu()
+        self.setContextMenu(self.right_menu)
+
+    def LeftClick(self, value):
+        if value == QtWidgets.QSystemTrayIcon.Trigger:
+            mw.show()
+
+class RightClickMenu(QtWidgets.QMenu):
+    def __init__(self, parent=None):
+        super(RightClickMenu, self).__init__(parent)
+        icon = QtGui.QIcon.fromTheme("application-exit")
+        icon2 = QtGui.QIcon.fromTheme("network-transmit")
+        addServ = QtWidgets.QAction(icon2, "&AddServer", self)
+        exitAction = QtWidgets.QAction(icon, "&Exit", self)
+        exitAction.triggered.connect(QtWidgets.QApplication.exit)
+        addServ.triggered.connect(mw.addWidget)
+        self.addAction(addServ)
+        self.addAction(exitAction)
 
 
 if __name__ == '__main__':
