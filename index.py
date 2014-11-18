@@ -4,18 +4,12 @@ from os import system
 import sys
 from PyQt5 import QtGui, QtCore, QtWidgets
 
-settings = QtCore.QSettings()
-settings.setValue('servers', {})
-settings.setValue('credentials', {})
-
-del settings
-settings = QtCore.QSettings()
-servers = settings.value('servers', type = QtCore.QVariant)
-credentials = settings.value('credentials', type = QtCore.QVariant)
-
-
+settings = QtCore.QSettings('qrdp', 'qrdp1')
+servers = settings.value('servers', type = dict) #type = QtCore.QVariant )
+credentials = settings.value('credentials', type = QtCore.QVariant ) #type = dict) # type = QtCore.QVariant ) #
 
 def main():
+
     app = QtWidgets.QApplication(sys.argv)
     app.setApplicationName("qrdp")
     global mw
@@ -79,11 +73,17 @@ class MainWindow(QtWidgets.QMainWindow):
         sender = self.sender()
         host = sender.text()
         print host
+        print servers
         if self.check is True:
             sender.deleteLater()
             for k,v in servers.items():
                 if v == host:
                     del servers[k]
+                    del credentials[host]
+                    settings = QtCore.QSettings('qrdp', 'qrdp1')
+                    settings.setValue('servers', servers)
+                    settings.setValue('credentials', credentials)
+                    del settings
         else:
             authSettings = credentials.get(host)
             user = authSettings[0]
@@ -144,16 +144,19 @@ class dialogWindow(QtWidgets.QDialog):
             self.textName.setText("Administrator")
             self.cb.toggle()
 
-
     def addHost(self):
+        settings = QtCore.QSettings('qrdp', 'qrdp1')
         host = self.textHost.text()
         name = self.textName.text()
         password = self.textPass.text()
         servlen = range(1, 1000)
         newItem = [x for x in servlen if x not in servers.keys()]
         servers.update({newItem[0] : host})
+        settings.setValue('servers', {newItem[0] : host})
         newHost = servers.get(newItem[0])
-        credentials.update({newHost : [name, password, self.isadm]})
+        print newHost
+        settings.setValue('credentials', {newHost : [name, password, self.isadm]})
+        del settings
         self.accept()
 
 
@@ -165,28 +168,10 @@ class newHostButton(QtWidgets.QPushButton):
         self.clicked.connect(mw.buttonClicked)
 
 
-class delWindow(QtWidgets.QDialog):
-    def __init__(self):
-        super(delWindow, self).__init__()
-        x = 10
-        y = 50
-        for item in servers:
-            srv = servers.get(item)
-            btn = QtWidgets.QPushButton(srv, self)
-            btn.clicked.connect(self.deleteLater)
-            btn.resize(btn.sizeHint())
-            btn.move(x, y)
-            self.setToolTip(srv)
-            y += 40
-        self.setGeometry(300, 300, 225, 350)
-        self.exec_()
-
-
 class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
     def __init__(self, parent=None):
         QtWidgets.QSystemTrayIcon.__init__(self, parent)
         self.setIcon(QtGui.QIcon.fromTheme("applications-system"))
-
         self.activated.connect(self.LeftClick)
         self.right_menu = RightClickMenu()
         self.setContextMenu(self.right_menu)
@@ -194,6 +179,7 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
     def LeftClick(self, value):
         if value == QtWidgets.QSystemTrayIcon.Trigger:
             mw.show()
+
 
 class RightClickMenu(QtWidgets.QMenu):
     def __init__(self, parent=None):
