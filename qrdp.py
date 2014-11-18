@@ -5,8 +5,8 @@ import sys
 from PyQt5 import QtGui, QtCore, QtWidgets
 
 settings = QtCore.QSettings('qrdp', 'qrdp1')
-servers = settings.value('servers', type = dict) #type = QtCore.QVariant )
-credentials = settings.value('credentials', type = QtCore.QVariant ) #type = dict) # type = QtCore.QVariant ) #
+servers = settings.value('servers')
+credentials = settings.value('credentials')
 
 def main():
 
