@@ -7,6 +7,8 @@ from PyQt5 import QtGui, QtCore, QtWidgets
 settings = QtCore.QSettings('qrdp', 'qrdp1')
 servers = settings.value('servers')
 credentials = settings.value('credentials')
+resolution = settings.value('resolution')
+
 
 def main():
 
@@ -19,7 +21,6 @@ def main():
     trayWidget.show()
     sys.exit(app.exec_())
 
-
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self, parent = None):
         super(MainWindow, self).__init__(parent)
@@ -30,7 +31,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.cb = QtWidgets.QCheckBox('Remove host', self)
         self.resolution = QtWidgets.QLineEdit(self)
         self.resolution.setObjectName("resolution")
-        self.resolution.setText("1366x695")
+        if type(resolution) != unicode:
+            self.resolution.setText("Enter resolution")
+        else:
+            self.resolution.setText(resolution)
+        self.resolution.editingFinished.connect(self.handleEditingFinished)
         self.scrollLayout = QtWidgets.QFormLayout()
         self.scrollWidget = QtWidgets.QWidget()
         self.scrollWidget.setLayout(self.scrollLayout)
@@ -57,6 +62,14 @@ class MainWindow(QtWidgets.QMainWindow):
         self.setCentralWidget(self.centralWidget)
         self.cb.stateChanged.connect(self.cb_changed)
 
+    def handleEditingFinished(self):
+        if self.resolution.isModified():
+            settings = QtCore.QSettings('qrdp', 'qrdp1')
+            text = mw.resolution.text()
+            settings.setValue('resolution', text)
+            del settings
+        self.resolution.setModified(False)
+
     def addWidget(self):
         if mw.isHidden() == True:
             mw.show()
@@ -72,31 +85,34 @@ class MainWindow(QtWidgets.QMainWindow):
     def buttonClicked(self):
         sender = self.sender()
         host = sender.text()
-        print host
-        print servers
+        settings = QtCore.QSettings('qrdp', 'qrdp1')
         if self.check is True:
             sender.deleteLater()
             for k,v in servers.items():
                 if v == host:
                     del servers[k]
                     del credentials[host]
-                    settings = QtCore.QSettings('qrdp', 'qrdp1')
                     settings.setValue('servers', servers)
                     settings.setValue('credentials', credentials)
                     del settings
         else:
+            settings = QtCore.QSettings('qrdp', 'qrdp1')
+            servers = settings.value('servers')
+            credentials = settings.value('credentials')
+            resolution = settings.value('resolution')
             authSettings = credentials.get(host)
             user = authSettings[0]
             user = str(user)
             password =  authSettings[1]
             password = str(password)
             isadm = authSettings[2]
-            system("rdesktop -5 -K -r clipboard:CLIPBOARD -z -a 16 " + host +'' + isadm + " -g " + self.resolution.text() + " -u " + user + " -p " +password)
+            system("rdesktop -5 -K -r clipboard:CLIPBOARD -z -a 16 " + host +'' + isadm + " -g " + str(resolution) + " -u " + user + " -p " +password)
 
 
 class dialogWindow(QtWidgets.QDialog):
     def __init__(self):
         super(dialogWindow, self).__init__()
+
         self.setFixedSize(220,330)
         self.buttonBox = QtWidgets.QDialogButtonBox(self)
         self.textName = QtWidgets.QLineEdit(self)
@@ -154,7 +170,6 @@ class dialogWindow(QtWidgets.QDialog):
         servers.update({newItem[0] : host})
         settings.setValue('servers', {newItem[0] : host})
         newHost = servers.get(newItem[0])
-        print newHost
         settings.setValue('credentials', {newHost : [name, password, self.isadm]})
         del settings
         self.accept()
@@ -188,10 +203,17 @@ class RightClickMenu(QtWidgets.QMenu):
         icon2 = QtGui.QIcon.fromTheme("network-transmit")
         addServ = QtWidgets.QAction(icon2, "&AddServer", self)
         exitAction = QtWidgets.QAction(icon, "&Exit", self)
-        exitAction.triggered.connect(QtWidgets.QApplication.exit)
+        exitAction.triggered.connect(self.exitApp)
         addServ.triggered.connect(mw.addWidget)
         self.addAction(addServ)
         self.addAction(exitAction)
+
+    def exitApp(self):
+        settings = QtCore.QSettings('qrdp', 'qrdp1')
+        text = mw.resolution.text()
+        settings.setValue('resolution', text)
+        del settings
+        QtWidgets.QApplication.exit()
 
 
 if __name__ == '__main__':
